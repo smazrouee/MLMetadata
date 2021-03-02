@@ -1,0 +1,197 @@
+import pandas as pd 
+import numpy as np 
+import matplotlib.pyplot as plt
+%matplotlib inline
+import seaborn as sns
+import warnings
+import csv
+import statistics
+
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split 
+from sklearn import metrics
+from sklearn import preprocessing
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, make_scorer, precision_score, f1_score
+from sklearn.ensemble import RandomForestClassifier
+
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
+
+import warnings
+warnings.filterwarnings('ignore')
+           
+
+PIRC2019_all = pd.read_csv('file1', na_values='NaN', keep_default_na=False, sep =',')
+PIRC2019_first_Encoded = pd.read_csv('file2', na_values='NaN', keep_default_na=False, sep =',')
+
+
+Percent = 10
+MaxClusters = PIRC2019_first_Encoded['ClusterID'].max()
+NoOfClusters = int(round((Percent * MaxClusters) /100))
+
+df_topClusters = pd.DataFrame()
+topCluster_list = PIRC2019_first_Encoded.groupby(['ClusterID']).size().nlargest(NoOfClusters)
+for i in topCluster_list.head(NoOfClusters).index: 
+        j = PIRC2019_first_Encoded[PIRC2019_first_Encoded['ClusterID']==i]
+        df_topClusters = df_topClusters.append(j, ignore_index=True)
+        
+
+Dataset = df_topClusters[[Column_list]]
+
+for col in Dataset.columns:
+    if Dataset[col].dtype== type(object):
+        le = preprocessing.LabelEncoder()  
+        Dataset[col] = le.fit_transform(Dataset[col])
+        
+X = Dataset.drop('ClusterID', axis=1)
+y = Dataset['ClusterID']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.4, random_state = 100)
+
+
+dtree= DecisionTreeClassifier()
+dtree.fit(X_train, y_train)
+DT_predictions = dtree.predict(X_test)
+#print(confusion_matrix(y_test, DT_predictions))
+print('\n')
+print(classification_report(y_test, DT_predictions))
+metrics.accuracy_score(y_test, DT_predictions)
+
+rfc = RandomForestClassifier(n_estimators= 200)
+rfc.fit(X_train, y_train)
+rfc_predictions = rfc.predict (X_test)
+#print(confusion_matrix(y_test, rfc_predictions))
+print('\n')
+print(classification_report(y_test, rfc_predictions))
+metrics.accuracy_score(y_test, rfc_predictions)
+
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import metrics
+knn = KNeighborsClassifier(n_neighbors = NoOfClusters) 
+knn.fit(X_train, y_train)
+knn_predictions = knn.predict(X_test)
+#print(confusion_matrix(y_test, knn_predictions))
+print('\n')
+print(classification_report(y_test, knn_predictions))
+metrics.accuracy_score(y_test, knn_predictions)
+
+from sklearn.svm import SVC
+svm_model = SVC()
+svm_model.fit(X_train, y_train)
+svm_predictions = svm_model.predict(X_test)
+#print(confusion_matrix (y_test, svm_predictions))
+print('\n')
+print(classification_report(y_test, svm_predictions))
+metrics.accuracy_score(y_test, svm_predictions)
+
+from sklearn.model_selection import GridSearchCV
+param_grid = {'C':[0.1, 1,10,100,1000], 'gamma':[1,0.1, 0.01, 0.001, 0.0001]}
+grid = GridSearchCV(SVC(), param_grid, verbose=3)
+grid.fit(X_train, y_train)
+grid.best_params_
+grid.best_estimator_
+grid_predictions = grid.predict(X_test)
+#print(confusion_matrix(y_test,grid_predictions))
+print('\n')
+print(classification_report(y_test, grid_predictions))
+# metrics.accuracy_score(y_test, grid_predictions)
+
+
+
+%********** Knn Cross validation *******
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import metrics
+knn = KNeighborsClassifier(n_neighbors = NoOfClusters) 
+knn.fit(X_train, y_train)
+knn_predictions = knn.predict(X_test)
+metrics.accuracy_score(y_test, knn_predictions)
+
+k_range = range(1,50)
+knn_depth = []
+for i in k_range:
+    knn_clf = KNeighborsClassifier(n_neighbors = i)
+    # Perform 7-fold cross validation 
+    knn_scores = cross_val_score(estimator=knn_clf, X=X, y=y, cv=10, scoring= 'accuracy')
+    knn_depth.append((i,knn_scores.mean()))
+    #print(scores.mean())
+
+print(k_scores)
+
+#plt.plot(knn_scores)
+plt.plot(k_range, k_scores)
+plt.xlabel('10-fold, 50-repetition for kNearest Neighbors')
+plt.ylabel('Cross-Validation Accuracy')
+
+
+
+
+%******* DT Cross validation ********
+dt_range1 = range(1,50)
+dt_scores1 = []
+for t in dt_range1: 
+    dt1 = DecisionTreeClassifier(max_depth=t)
+    dt_scores = cross_val_score(dt1, X, y, cv=10, scoring= 'accuracy', n_jobs=-1)
+    dt_scores1.append(dt_scores.mean())
+print(dt_scores1)
+
+plt.plot(dt_range1, dt_scores1)
+plt.xlabel('10-fold, 50-repetition for Decision Tree')
+plt.ylabel('Cross-Validation Accuracy')
+plt.ylim((0,0.80))
+
+
+%******* 10-Fold cross validation, 50 repetition *******
+import matplotlib.lines as mlines
+from sklearn.svm import SVC
+svm_model = SVC()
+svm_model.fit(X_train, y_train)
+svm_predictions = svm_model.predict(X_test)
+#print(confusion_matrix (y_test, svm_predictions))
+# print('\n')
+# print(classification_report(y_test, svm_predictions))
+# metrics.accuracy_score(y_test, svm_predictions)
+
+svm_range = range(1,51)
+svm_depth = []
+for i in svm_range:
+    svm_clf = SVC()
+    # Perform 7-fold cross validation 
+    svm_scores = cross_val_score(estimator=svm_clf, X=X, y=y, cv=50, scoring= 'accuracy', n_jobs=-1)
+    svm_depth.append((i,svm_scores.mean()))
+
+dt_range1 = range(1,50)
+dt_scores1 = []
+for t in dt_range1: 
+    dt1 = DecisionTreeClassifier(max_depth=t)
+    dt_scores = cross_val_score(dt1, X, y, cv=10, scoring= 'accuracy', n_jobs=-1)
+    dt_scores1.append(dt_scores.mean())
+    
+rfc_range1 = range(1,50)
+rfc_scores1 = []
+for l in rfc_range1: 
+    rfc1 = RandomForestClassifier(n_estimators= l)
+    rfc_scores = cross_val_score(rfc1, X, y, cv=10, scoring= 'accuracy', n_jobs=-1)
+    rfc_scores1.append(rfc_scores.mean())
+
+
+    
+k_range1 = range(1,50)
+k_scores1 = []
+for k in k_range1: 
+    knn = KNeighborsClassifier(n_neighbors= k)
+    knn_scores = cross_val_score(knn, X, y, cv=10, scoring= 'accuracy' , n_jobs=-1)
+    k_scores1.append(knn_scores.mean())
+#print(k_scores1)
+
+
+
+plt.plot(svm_range, svm_scores,'--', label="Support Vector Machine")
+plt.plot(k_range1, k_scores1 ,'-.', label="kNearest Neighbor")
+plt.plot(dt_range1, dt_scores1,'-+', label="Decision Tree")
+plt.plot(rfc_range1, rfc_scores1,'-x', label="Random Forrest")
+plt.xlabel('10-Fold Cross validation, 50-repetitions ')
+plt.ylabel('Cross-Validation Accuracy')
+plt.xlim(1 ,51)
+plt.ylim((0,0.900))
+plt.legend( loc='top left')
+plt.savefig("10FoldCrossValidation_50Repetitions.pdf")
